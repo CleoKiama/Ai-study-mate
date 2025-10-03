@@ -25,11 +25,8 @@ export async function requireAuth() {
 }
 
 export async function redirectIfAuthenticated() {
-  console.log("Checking session...");
   const session = await getServerSession();
-  console.log("session", session);
   if (session) {
     redirect("/");
   }
 }
-
