@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-
+import { parseFormData } from "@mjackson/form-data-parser";
 import { getServerSession } from "@/utils/session.server";
 import llamaCloudServer from "@/utils/llama.cloud.server";
 import { db } from "@/utils/db.server";
@@ -37,8 +37,9 @@ export async function POST(request: Request) {
   const userId = session.user.id;
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("file-upload") as File;
+    const formData = await parseFormData(request);
+    const file = formData.get("doc") as File;
+
     const result = await uploadHandler(file, userId);
 
     await db.insert(llamaFile).values({
