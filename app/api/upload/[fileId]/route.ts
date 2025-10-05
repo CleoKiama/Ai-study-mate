@@ -5,6 +5,7 @@ import { db } from "@/utils/db.server";
 import { llamaFile } from "@/db/schema";
 import { env } from "@/utils/env.server";
 import llamaCloudServer, { llamaCloudConfig } from "@/utils/llama.cloud.server";
+import { tryCatch } from "@/utils/misc";
 
 const deleteFile = async (fileId: string, projectId: string) => {
   const url = new URL(`https://api.cloud.llamaindex.ai/api/v1/files/${fileId}`);
@@ -25,13 +26,34 @@ const deleteFile = async (fileId: string, projectId: string) => {
   }
 };
 
-export async function DELETE({ params }: { params: { fileId: string } }) {
-  const session = await getServerSession();
+export async function DELETE(
+  request: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ fileId: string }>;
+  },
+) {
+  const { fileId } = await params;
+  if (!fileId)
+    return NextResponse.json(
+      { message: "No file Id provided" },
+      { status: 401 },
+    );
+
+  const { data: session, error } = await tryCatch(getServerSession());
+  if (error)
+    return NextResponse.json(
+      { message: "something went wrong" },
+      { status: 500 },
+    );
+
   if (!session)
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const userId = session.user.id;
-  const { fileId } = params;
+
+  console.log("fileId", fileId);
 
   try {
     // First, verify user owns this file
@@ -58,7 +80,7 @@ export async function DELETE({ params }: { params: { fileId: string } }) {
     await db.delete(llamaFile).where(eq(llamaFile.fileId, fileId));
 
     return new Response("", {
-      status: 204,
+      status: 200,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown delete error";

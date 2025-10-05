@@ -5,6 +5,15 @@ import type { ManagedFile } from "./page";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/utils/misc";
 import { Loader2 } from "lucide-react";
 
@@ -39,6 +48,7 @@ export default function Client({
   const [newFiles, setNewFiles] = useState<NewFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ManagedFile | null>(null);
 
   const totalNewSize = useMemo(
     () => newFiles.reduce((acc, f) => acc + f.file.size, 0),
@@ -115,6 +125,8 @@ export default function Client({
   }
 
   async function handleDelete(fileId: string) {
+    console.log("deleting fileId =>", fileId);
+    if (!fileId) return console.log("no file id added");
     setDeletingId(fileId);
     try {
       const res = await fetch(`/api/upload/${fileId}`, {
@@ -132,7 +144,13 @@ export default function Client({
       console.error("Delete error:", err);
     } finally {
       setDeletingId(null);
+      setConfirmTarget(null);
     }
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmTarget) return;
+    await handleDelete(confirmTarget.id);
   }
 
   return (
@@ -176,7 +194,7 @@ export default function Client({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(f.id)}
+                      onClick={() => setConfirmTarget(f)}
                       disabled={deletingId === f.id}
                     >
                       {deletingId === f.id ? (
@@ -195,6 +213,42 @@ export default function Client({
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!confirmTarget}
+        onOpenChange={(open) => !open && setConfirmTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete File</DialogTitle>
+            <DialogDescription>
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
+              Are you sure you want to delete "{confirmTarget?.filename}"? This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletingId === confirmTarget?.id}
+            >
+              {deletingId === confirmTarget?.id ? (
+                <>
+                  Deleting
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Upload area */}
       <Card>
@@ -327,4 +381,3 @@ async function safeJson(res: Response) {
     return null;
   }
 }
-

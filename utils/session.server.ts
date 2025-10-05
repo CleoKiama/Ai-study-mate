@@ -4,16 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function getServerSession() {
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    return session;
-  } catch (error) {
-    if (error instanceof Error)
-      console.log(`error getting the session, ${error.message}`);
-    return null;
-  }
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  return session ?? null;
 }
 
 export async function requireAuth() {
