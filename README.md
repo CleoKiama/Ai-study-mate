@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Study Mate
 
-## Getting Started
+An AI-powered study companion that transforms your documents into interactive learning experiences. Upload PDFs and other study materials to generate personalized quizzes and summaries using advanced AI models.
 
-First, run the development server:
+## Features
+
+- **User Authentication** - Secure sign up/login with Better Auth
+- **Document Management** - Upload, store, and manage study documents via Llama Cloud
+- **AI Quiz Generation** - Create custom quizzes from your documents using Google Gemini and LlamaIndex
+- **Document Summaries** - AI-generated summaries of uploaded content (coming soon)
+- **Progress Tracking** - Monitor your study performance and quiz scores
+- **Responsive UI** - Modern interface built with shadcn/ui components
+
+## Prerequisites
+
+- Node.js 18+
+- PostgreSQL database
+- Llama Cloud account and API key
+- Google Gemini API key
+
+## Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd ai-study-mate
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Environment Variables**
+
+   Create a `.env.` file in the root directory:
+
+   ```bash
+   # Database
+   DATABASE_URL="postgresql://username:password@localhost:5432/database"
+
+   # AI Services
+   LLAMA_API_KEY="your-llama-cloud-api-key"
+   GEMINI_API_KEY="your-google-gemini-api-key"
+
+   # Optional: Better Auth URL (defaults to http://localhost:3000)
+   NEXT_PUBLIC_BETTER_AUTH_URL="http://localhost:3000"
+   ```
+
+4. **Database Setup**
+
+   Push the database schema to your PostgreSQL instance:
+
+   ```bash
+   npx drizzle-kit push
+   ```
+
+5. **Configure Llama Cloud**
+
+   Update `utils/llama.cloud.server.ts` with your Llama Cloud organization and project details:
+
+   ```typescript
+   export const llamaCloudConfig = {
+     name: "your-project-name",
+     projectName: "your-project",
+     organizationId: "your-organization-id",
+     apiKey: env.LLAMA_API_KEY,
+   };
+   ```
+
+## Development
+
+Run the development server with Turbopack:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Available Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build for production with Turbopack
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+1. **Authentication**
+   - Sign up at `/signup`
+   - Login at `/login`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Upload Documents**
+   - Navigate to `/dashboard/upload`
+   - Upload PDF files and study materials
+   - View and manage uploaded documents
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Generate Quizzes**
+   - Go to `/dashboard/quizzes`
+   - Select documents to base quizzes on
+   - Customize topic, difficulty, and question count
+   - Take AI-generated quizzes
 
-## Deploy on Vercel
+4. **View Summaries**
+   - Access `/dashboard/summaries` (feature in development)
+   - Review AI-generated document summaries
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Configuration Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Update Llama Cloud project settings in `utils/llama.cloud.server.ts`
+- Environment variables are validated in `utils/env.server.ts`
+- Database schema is defined in `db/schema.ts` and `db/auth-schema.ts`
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Authentication**: Better Auth
+- **Database**: PostgreSQL with Drizzle ORM
+- **AI/ML**: LlamaIndex, Llama Cloud, Google Gemini
+- **UI**: Tailwind CSS + Radix UI (shadcn/ui)
+- **Icons**: Lucide React
+- **Validation**: Zod
+- **Type Safety**: TypeScript with strict mode
