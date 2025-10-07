@@ -47,7 +47,6 @@ export async function POST(request: Request) {
       userId,
       externalFileId: result.externalFileId,
       fileName: file.name,
-      status: "uploaded",
     });
 
     return NextResponse.json(
@@ -58,6 +57,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (err) {
+    console.error(err);
     const message = err instanceof Error ? err.message : "Unknown upload error";
     return NextResponse.json({ message }, { status: 500 });
   }

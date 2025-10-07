@@ -15,10 +15,6 @@ export const llamaFile = pgTable("llama_file", {
 
   // Original filename (optional but useful for UI)
   fileName: text("file_name"),
-
-  // Simple lifecycle state: uploaded | ingesting | ready | deleted
-  status: text("status").notNull().default("uploaded"),
-
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
