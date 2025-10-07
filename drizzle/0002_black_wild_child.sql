@@ -1,0 +1,1 @@
+ALTER TABLE "llama_file" DROP COLUMN "status";
