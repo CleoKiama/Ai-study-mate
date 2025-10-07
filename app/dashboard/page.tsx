@@ -18,7 +18,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Welcome back!</h1>
         <p className="text-muted-foreground">
-          Here's what's happening with your studies today.
+          Here&apos;s what&apos;s happening with your studies today.
         </p>
       </div>
 
@@ -92,7 +92,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-4 space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      Uploaded "{recentDocument.name}"
+                      Uploaded &quot;{recentDocument.name}&quot;
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {recentDocument.uploadDate}
@@ -108,7 +108,8 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-4 space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      Generated summary for "{recentSummary.documentTitle}"
+                      Generated summary for &quot;{recentSummary.documentTitle}
+                      &quot;
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {recentSummary.createdAt}
@@ -124,7 +125,8 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-4 space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      Completed "{recentQuiz.title}" - {recentQuiz.bestScore}%
+                      Completed &quot;{recentQuiz.title}&quot; -{" "}
+                      {recentQuiz.bestScore}%
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {recentQuiz.lastAttempt}
@@ -156,4 +158,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
