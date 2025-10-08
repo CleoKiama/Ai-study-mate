@@ -12,17 +12,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
-import { QuizModal } from "./quiz-model";
 import type { UserFile } from "../page";
-import type { QuizQuestion } from "../utils/quiz-server";
 import { createQuizAction } from "../utils/quiz-server";
 import Link from "next/link";
 
 export const QuizClient = ({ files }: { files: UserFile[] }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedQuiz, setGeneratedQuiz] = useState<QuizQuestion[] | null>(
-    null,
-  );
   const [showNewQuizDialog, setShowNewQuizDialog] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
 
@@ -53,28 +48,15 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
     setError(null);
 
     try {
-      const result = await createQuizAction({
+      //INFO: should redirect to the quiz page
+      await createQuizAction({
         externalFileIds: selectedFiles,
         topic: topic.trim() || undefined,
         count: questionCount,
         difficulty,
       });
-      console.log("result", result);
-
-      if (result.success && result.quiz) {
-        setGeneratedQuiz(result.quiz);
-        setShowNewQuizDialog(false);
-        setShowQuizModal(true);
-        // Reset form
-        setSelectedFiles([]);
-        setTopic("");
-        setQuestionCount(5);
-        setDifficulty("medium");
-      } else {
-        setError(result.error || "Failed to generate quiz");
-      }
     } catch (err) {
-      setError("An unexpected error occurred");
+      setError("An unexpected error occurred.Please try again");
       console.error("Quiz generation error:", err);
     } finally {
       setIsGenerating(false);
@@ -150,7 +132,7 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
                   value={questionCount}
                   onChange={(e) =>
                     setQuestionCount(
-                      Math.max(1, Math.min(20, parseInt(e.target.value) || 5)),
+                      Math.max(1, Math.min(20, parseInt(e.target.value) || 1)),
                     )
                   }
                   min="1"
@@ -209,7 +191,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
           <DialogHeader>
             <DialogTitle>Your Quiz</DialogTitle>
           </DialogHeader>
-          {generatedQuiz && <QuizModal quiz={generatedQuiz} />}
         </DialogContent>
       </Dialog>
 

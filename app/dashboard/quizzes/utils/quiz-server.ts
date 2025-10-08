@@ -7,6 +7,8 @@ import { getServerSession } from "@/utils/session.server";
 import { db } from "@/utils/db.server";
 import { llamaFile } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { quiz as quizTable } from "@/db/schema";
+import { redirect } from "next/navigation";
 
 Settings.llm = gemini({
   model: GEMINI_MODEL.GEMINI_2_0_FLASH,
@@ -19,6 +21,7 @@ export type QuizQuestion = {
   correctAnswer: number;
 };
 
+//INFO: used as a type in the schema for the db
 export type QuizResult = {
   quiz: QuizQuestion[];
 };
@@ -36,12 +39,6 @@ export type CreateQuizInput = {
   topic?: string;
   count?: number;
   difficulty?: "easy" | "medium" | "hard";
-};
-
-export type CreateQuizResult = {
-  success: boolean;
-  quiz?: QuizQuestion[];
-  error?: string;
 };
 
 function parseQuizJson(text: string): QuizResult {
@@ -177,7 +174,7 @@ export async function generateQuiz(
  * @param input - Quiz creation parameters
  * @returns Promise<CreateQuizResult> - Result with quiz data or error
  */
-export async function createQuizAction(input: CreateQuizInput): Promise<CreateQuizResult> {
+export async function createQuizAction(input: CreateQuizInput) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
@@ -193,7 +190,10 @@ export async function createQuizAction(input: CreateQuizInput): Promise<CreateQu
     }
 
     if (count < 1 || count > 20) {
-      return { success: false, error: "Question count must be between 1 and 20" };
+      return {
+        success: false,
+        error: "Question count must be between 1 and 20",
+      };
     }
 
     // Verify ownership and get authorized externalFileIds
@@ -205,14 +205,22 @@ export async function createQuizAction(input: CreateQuizInput): Promise<CreateQu
     const ownedFileIds = userFiles.map((f) => f.externalFileId);
 
     if (ownedFileIds.length === 0) {
-      return { success: false, error: "No documents found. Please upload documents first." };
+      return {
+        success: false,
+        error: "No documents found. Please upload documents first.",
+      };
     }
 
     // Filter requested files to only those owned by the user
-    const authorizedFileIds = externalFileIds.filter(id => ownedFileIds.includes(id));
+    const authorizedFileIds = externalFileIds.filter((id) =>
+      ownedFileIds.includes(id),
+    );
 
     if (authorizedFileIds.length === 0) {
-      return { success: false, error: "Selected documents are not accessible or do not exist." };
+      return {
+        success: false,
+        error: "Selected documents are not accessible or do not exist.",
+      };
     }
 
     const quiz = await generateQuiz({
@@ -223,8 +231,25 @@ export async function createQuizAction(input: CreateQuizInput): Promise<CreateQu
       difficulty: difficulty as "easy" | "medium" | "hard",
     });
 
-    return { success: true, quiz: quiz.quiz };
+    // save the quiz to db
+    const [{ quizId }] = await db
+      .insert(quizTable)
+      .values({
+        userId,
+        quiz,
+      })
+      .returning({
+        quizId: quizTable.id,
+      });
+    
+    redirect(`/dashboard/quizzes/${quizId}`);
   } catch (error) {
+    // Check if this is a Next.js redirect and rethrow it
+    if (error && typeof error === 'object' && 'digest' in error && 
+        typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+    
     console.error("Quiz generation error:", error);
     return {
       success: false,

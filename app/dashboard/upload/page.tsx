@@ -19,11 +19,11 @@ export default async function UploadPage() {
     .select({
       id: llamaFile.fileId,
       filename: llamaFile.fileName,
-      uploadedAt: llamaFile.createdAt,
+      uploadedAt: llamaFile.created_at,
     })
     .from(llamaFile)
     .where(eq(llamaFile.userId, userId))
-    .orderBy(desc(llamaFile.createdAt));
+    .orderBy(desc(llamaFile.created_at));
 
   const managedFiles: ManagedFile[] = rows.map((r) => ({
     id: r.id,
