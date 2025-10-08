@@ -12,11 +12,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
-import type { UserFile } from "../page";
+import type { UserFile, UserQuiz, QuizStats } from "../page";
 import { createQuizAction } from "../utils/quiz-server";
 import Link from "next/link";
 
-export const QuizClient = ({ files }: { files: UserFile[] }) => {
+export const QuizClient = ({ 
+  files, 
+  quizzes, 
+  stats 
+}: { 
+  files: UserFile[]; 
+  quizzes: UserQuiz[]; 
+  stats: QuizStats; 
+}) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showNewQuizDialog, setShowNewQuizDialog] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
@@ -48,7 +56,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
     setError(null);
 
     try {
-      //INFO: should redirect to the quiz page
       await createQuizAction({
         externalFileIds: selectedFiles,
         topic: topic.trim() || undefined,
@@ -81,7 +88,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
               <DialogTitle>Create New Quiz</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {/* File Selection */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Select Documents ({files.length} available)
@@ -110,7 +116,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
                 </div>
               </div>
 
-              {/* Topic */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Topic (optional)
@@ -122,7 +127,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
                 />
               </div>
 
-              {/* Question Count */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Number of Questions
@@ -140,7 +144,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
                 />
               </div>
 
-              {/* Difficulty */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Difficulty
@@ -185,7 +188,6 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
         </Dialog>
       </div>
 
-      {/* Generated Quiz Modal */}
       <Dialog open={showQuizModal} onOpenChange={setShowQuizModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -193,6 +195,37 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      {quizzes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Quizzes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {quizzes.map((quiz) => (
+                <div
+                  key={quiz.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-medium">{quiz.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Created {quiz.createdAt.toLocaleDateString()} • {quiz.attempts} attempts
+                      {quiz.attempts > 0 && ` • Best score: ${quiz.score}%`}
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/dashboard/quizzes/${quiz.id}`}>
+                      Take Quiz
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {files.length === 0 ? (
         <Card>
@@ -211,7 +244,7 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
             </div>
           </CardContent>
         </Card>
-      ) : (
+      ) : quizzes.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="space-y-4">
@@ -226,7 +259,7 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -241,16 +274,16 @@ export const QuizClient = ({ files }: { files: UserFile[] }) => {
               </p>
             </div>
             <div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats.quizzesCount}</div>
               <p className="text-sm text-muted-foreground">Quizzes Created</p>
             </div>
             <div>
-              <div className="text-2xl font-bold">-</div>
+              <div className="text-2xl font-bold">{stats.avgScore}</div>
               <p className="text-sm text-muted-foreground">Avg Score</p>
             </div>
             <div>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-sm text-muted-foreground">Attempts</p>
+              <div className="text-2xl font-bold">{stats.totalAttempts}</div>
+              <p className="text-sm text-muted-foreground">Total Attempts</p>
             </div>
           </div>
         </CardContent>

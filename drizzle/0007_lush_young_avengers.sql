@@ -1,0 +1,1 @@
+ALTER TABLE "quiz" ALTER COLUMN "name" SET DEFAULT 'Untitled Quiz';

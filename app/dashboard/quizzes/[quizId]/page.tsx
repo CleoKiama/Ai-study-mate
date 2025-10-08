@@ -25,5 +25,5 @@ export default async function QuizPage({
   if (!record) notFound();
 
   const quizResult = record.value as QuizResult;
-  return <QuizModal quiz={quizResult.quiz} />;
+  return <QuizModal quiz={quizResult.quiz} quizId={quizId} />;
 }

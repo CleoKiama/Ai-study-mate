@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "db-push": "pnpm drizzle-kit generate && pnpm drizzle-kit migrate"
+    "db-push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
     "@llamaindex/google": "^0.3.22",

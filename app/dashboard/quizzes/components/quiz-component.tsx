@@ -3,11 +3,21 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { QuizQuestion } from "../utils/quiz-server";
+import { recordQuizAttempt } from "../utils/quiz-server";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
-export function QuizModal({ quiz }: { quiz: QuizQuestion[] }) {
+export function QuizModal({
+  quiz,
+  quizId,
+}: {
+  quiz: QuizQuestion[];
+  quizId?: string;
+}) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [isRecordingAttempt, setIsRecordingAttempt] = useState(false);
 
   const questions = quiz;
   const totalQuestions = questions.length;
@@ -18,20 +28,6 @@ export function QuizModal({ quiz }: { quiz: QuizQuestion[] }) {
     setSelectedAnswers(newAnswers);
   };
 
-  const handleNext = () => {
-    if (currentQuestion < totalQuestions - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      setShowResults(true);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((question, index) => {
@@ -40,6 +36,34 @@ export function QuizModal({ quiz }: { quiz: QuizQuestion[] }) {
       }
     });
     return Math.round((correct / totalQuestions) * 100);
+  };
+
+  const handleNext = async () => {
+    if (currentQuestion < totalQuestions - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      if (quizId) {
+        setIsRecordingAttempt(true);
+        try {
+          const score = calculateScore();
+          const result = await recordQuizAttempt(quizId, score);
+          if (!result.success) {
+            console.error("Failed to record quiz attempt:", result.error);
+          }
+        } catch (error) {
+          console.error("Error recording quiz attempt:", error);
+        } finally {
+          setIsRecordingAttempt(false);
+        }
+      }
+      setShowResults(true);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
   };
 
   if (showResults) {
@@ -98,6 +122,11 @@ export function QuizModal({ quiz }: { quiz: QuizQuestion[] }) {
 
   return (
     <div className="space-y-6">
+      <p>
+        <Link href="/dashboard/quizzes">
+          <ArrowLeft />
+        </Link>
+      </p>
       <div className="flex justify-between items-center">
         <span className="text-sm text-muted-foreground">
           Question {currentQuestion + 1} of {totalQuestions}
@@ -142,9 +171,15 @@ export function QuizModal({ quiz }: { quiz: QuizQuestion[] }) {
         </Button>
         <Button
           onClick={handleNext}
-          disabled={selectedAnswers[currentQuestion] === undefined}
+          disabled={
+            selectedAnswers[currentQuestion] === undefined || isRecordingAttempt
+          }
         >
-          {currentQuestion === totalQuestions - 1 ? "Finish" : "Next"}
+          {isRecordingAttempt
+            ? "Recording..."
+            : currentQuestion === totalQuestions - 1
+              ? "Finish"
+              : "Next"}
         </Button>
       </div>
     </div>

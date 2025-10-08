@@ -46,16 +46,9 @@ export default function DashboardLayout({
           onOpenChange={setSidebarOpen}
         />
       }
-      header={
-        <Header 
-          title="Dashboard" 
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-      }
     >
-      <div className="p-4 md:p-6">
-        {children}
-      </div>
+      <div className="p-4 md:p-6">{children}</div>
     </AppShell>
   );
 }
+

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, json } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, json, integer } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import type { QuizResult } from "@/app/dashboard/quizzes/utils/quiz-server";
 
@@ -27,6 +27,9 @@ export const quiz = pgTable("quiz", {
   userId: text("user_id")
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
+  name: text("name").default("Untitled Quiz").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  score: integer("score").default(0).notNull(),
   quiz: json().$type<QuizResult>().notNull(),
   ...timestamps,
 });

@@ -6,7 +6,7 @@ import { ContextChatEngine, Settings } from "llamaindex";
 import { getServerSession } from "@/utils/session.server";
 import { db } from "@/utils/db.server";
 import { llamaFile } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { quiz as quizTable } from "@/db/schema";
 import { redirect } from "next/navigation";
 
@@ -21,7 +21,6 @@ export type QuizQuestion = {
   correctAnswer: number;
 };
 
-//INFO: used as a type in the schema for the db
 export type QuizResult = {
   quiz: QuizQuestion[];
 };
@@ -43,7 +42,6 @@ export type CreateQuizInput = {
 
 function parseQuizJson(text: string): QuizResult {
   try {
-    // Try to extract JSON from the response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonText = jsonMatch ? jsonMatch[0] : text;
 
@@ -69,7 +67,6 @@ function parseQuizJson(text: string): QuizResult {
           throw new Error(`Invalid question format at index ${index}`);
         }
 
-        // Find the correct answer index
         let correctAnswer = 0;
         const answerText = question.answer.toString().trim().toLowerCase();
 
@@ -95,6 +92,27 @@ function parseQuizJson(text: string): QuizResult {
     console.error("Failed to parse quiz JSON:", error);
     throw new Error("Failed to parse quiz response from AI");
   }
+}
+
+async function generateQuizName(topic?: string, quizQuestions?: QuizQuestion[]): Promise<string> {
+  try {
+    const prompt = topic 
+      ? `Generate a short, descriptive name (max 6 words) for a quiz about: ${topic}. Return only the name, no explanation.`
+      : `Generate a short, descriptive name (max 6 words) for a quiz based on these questions: ${quizQuestions?.slice(0, 2).map(q => q.question).join(", ")}. Return only the name, no explanation.`;
+    
+    const response = await Settings.llm?.chat({ 
+      messages: [{ content: prompt, role: "user" }] 
+    });
+    const name = response?.message?.content?.toString()?.trim();
+    
+    if (name && name.length > 0 && name.length <= 50) {
+      return name.replace(/^["']|["']$/g, "");
+    }
+  } catch (error) {
+    console.error("Failed to generate quiz name:", error);
+  }
+  
+  return "Untitled Quiz";
 }
 
 const getSystemPrompt = (count = 5, difficulty = "medium") => {
@@ -169,11 +187,32 @@ export async function generateQuiz(
   return parseQuizJson(messageContent);
 }
 
-/**
- * Creates a quiz based on user-selected documents
- * @param input - Quiz creation parameters
- * @returns Promise<CreateQuizResult> - Result with quiz data or error
- */
+export async function recordQuizAttempt(quizId: string, score: number) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return { success: false, error: "Authentication required" };
+    }
+
+    if (score < 0 || score > 100) {
+      return { success: false, error: "Score must be between 0 and 100" };
+    }
+
+    await db
+      .update(quizTable)
+      .set({
+        attempts: sql`${quizTable.attempts} + 1`,
+        score: score,
+      })
+      .where(and(eq(quizTable.id, quizId), eq(quizTable.userId, session.user.id)));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to record quiz attempt:", error);
+    return { success: false, error: "Failed to record attempt" };
+  }
+}
+
 export async function createQuizAction(input: CreateQuizInput) {
   try {
     const session = await getServerSession();
@@ -184,7 +223,6 @@ export async function createQuizAction(input: CreateQuizInput) {
     const userId = session.user.id;
     const { externalFileIds, topic, count = 5, difficulty = "medium" } = input;
 
-    // Validate input
     if (!externalFileIds || externalFileIds.length === 0) {
       return { success: false, error: "Please select at least one document" };
     }
@@ -196,7 +234,6 @@ export async function createQuizAction(input: CreateQuizInput) {
       };
     }
 
-    // Verify ownership and get authorized externalFileIds
     const userFiles = await db
       .select({ externalFileId: llamaFile.externalFileId })
       .from(llamaFile)
@@ -211,7 +248,6 @@ export async function createQuizAction(input: CreateQuizInput) {
       };
     }
 
-    // Filter requested files to only those owned by the user
     const authorizedFileIds = externalFileIds.filter((id) =>
       ownedFileIds.includes(id),
     );
@@ -231,12 +267,16 @@ export async function createQuizAction(input: CreateQuizInput) {
       difficulty: difficulty as "easy" | "medium" | "hard",
     });
 
-    // save the quiz to db
+    const name = await generateQuizName(topic, quiz.quiz);
+
     const [{ quizId }] = await db
       .insert(quizTable)
       .values({
         userId,
+        name,
         quiz,
+        attempts: 0,
+        score: 0,
       })
       .returning({
         quizId: quizTable.id,
@@ -244,7 +284,6 @@ export async function createQuizAction(input: CreateQuizInput) {
     
     redirect(`/dashboard/quizzes/${quizId}`);
   } catch (error) {
-    // Check if this is a Next.js redirect and rethrow it
     if (error && typeof error === 'object' && 'digest' in error && 
         typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
       throw error;
