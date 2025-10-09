@@ -11,7 +11,7 @@ export function NotFound() {
             <div className="text-6xl text-muted-foreground">404</div>
             <h1 className="text-2xl font-bold text-foreground">Page Not Found</h1>
             <p className="text-muted-foreground">
-              The page you're looking for doesn't exist or you don't have permission to access it.
+              The page you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to access it.
             </p>
           </div>
           
