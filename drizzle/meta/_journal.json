@@ -57,6 +57,20 @@
       "when": 1759912129813,
       "tag": "0007_lush_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1759995939332,
+      "tag": "0008_spotty_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1760439609331,
+      "tag": "0009_crazy_leopardon",
+      "breakpoints": true
     }
   ]
 }
