@@ -82,7 +82,8 @@ export default function SummariesClient({
         setSummaries(serializedSummaries);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate summary");
+      console.error("Summary generation error:", err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setGeneratingDocs((prev) => {
         const newSet = new Set(prev);

@@ -7,7 +7,7 @@ import { getServerSession } from "@/utils/session.server";
 import { db } from "@/utils/db.server";
 import { llamaFile } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { quiz as quizTable } from "@/db/schema";
+import { quiz as quizTable, quizAttempt } from "@/db/schema";
 import { redirect } from "next/navigation";
 
 Settings.llm = gemini({
@@ -198,13 +198,22 @@ export async function recordQuizAttempt(quizId: string, score: number) {
       return { success: false, error: "Score must be between 0 and 100" };
     }
 
-    await db
-      .update(quizTable)
-      .set({
-        attempts: sql`${quizTable.attempts} + 1`,
-        score: score,
-      })
-      .where(and(eq(quizTable.id, quizId), eq(quizTable.userId, session.user.id)));
+    await db.transaction(async (tx) => {
+      await tx.insert(quizAttempt).values({
+        userId: session.user.id,
+        quizId,
+        score,
+      });
+
+      await tx
+        .update(quizTable)
+        .set({
+          attempts: sql`${quizTable.attempts} + 1`,
+          score: sql`GREATEST(${quizTable.score}, ${score})`,
+          updated_at: sql`now()`,
+        })
+        .where(and(eq(quizTable.id, quizId), eq(quizTable.userId, session.user.id)));
+    });
 
     return { success: true };
   } catch (error) {

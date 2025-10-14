@@ -9,7 +9,7 @@ interface ChartProps extends React.ComponentProps<"div"> {
 }
 
 const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
-  ({ className, children, config, ...props }, ref) => {
+  ({ className, children, ...props }, ref) => {
     return (
       <div
         ref={ref}

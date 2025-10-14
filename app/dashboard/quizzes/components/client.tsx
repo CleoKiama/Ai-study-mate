@@ -63,8 +63,8 @@ export const QuizClient = ({
         difficulty,
       });
     } catch (err) {
-      setError("An unexpected error occurred.Please try again");
       console.error("Quiz generation error:", err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -268,9 +268,9 @@ export const QuizClient = ({
         <CardContent>
           <div className="grid grid-cols-4 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold">{files.length}</div>
+              <div className="text-2xl font-bold">{stats.streakDays}</div>
               <p className="text-sm text-muted-foreground">
-                Available Documents
+                Streak Days
               </p>
             </div>
             <div>
