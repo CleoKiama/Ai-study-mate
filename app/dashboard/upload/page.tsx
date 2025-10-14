@@ -9,6 +9,7 @@ export type ManagedFile = {
   id: string;
   filename: string;
   uploadedAt: string;
+  externalFileId: string;
 };
 
 export default async function UploadPage() {
@@ -20,6 +21,7 @@ export default async function UploadPage() {
       id: llamaFile.fileId,
       filename: llamaFile.fileName,
       uploadedAt: llamaFile.created_at,
+      externalFileId: llamaFile.externalFileId,
     })
     .from(llamaFile)
     .where(eq(llamaFile.userId, userId))
@@ -29,6 +31,7 @@ export default async function UploadPage() {
     id: r.id,
     filename: r.filename ?? "Untitled",
     uploadedAt: r.uploadedAt ? new Date(r.uploadedAt).toISOString() : "",
+    externalFileId: r.externalFileId,
   }));
 
   return <Client initialManagedFiles={managedFiles} />;

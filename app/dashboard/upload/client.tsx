@@ -5,6 +5,7 @@ import type { ManagedFile } from "./page";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogClose,
@@ -24,6 +25,14 @@ type NewFile = {
   sizeLabel: string;
   typeLabel: string;
   addedAt: string;
+};
+
+type GeneratedSummary = {
+  id: string;
+  title: string;
+  content: string;
+  model: string;
+  tokens?: number;
 };
 
 function formatFileSize(bytes: number): string {
@@ -49,6 +58,12 @@ export default function Client({
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ManagedFile | null>(null);
+  const [summaryTarget, setSummaryTarget] = useState<ManagedFile | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summaryTopic, setSummaryTopic] = useState("");
+  const [summaryLength, setSummaryLength] = useState(200);
+  const [generatedSummary, setGeneratedSummary] = useState<GeneratedSummary | null>(null);
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
 
   const totalNewSize = useMemo(
     () => newFiles.reduce((acc, f) => acc + f.file.size, 0),
@@ -125,7 +140,6 @@ export default function Client({
   }
 
   async function handleDelete(fileId: string) {
-    console.log("deleting fileId =>", fileId);
     if (!fileId) return console.log("no file id added");
     setDeletingId(fileId);
     try {
@@ -146,6 +160,47 @@ export default function Client({
       setDeletingId(null);
       setConfirmTarget(null);
     }
+  }
+
+  async function handleGenerateSummary() {
+    if (!summaryTarget) return;
+    
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/summaries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          externalFileId: summaryTarget.externalFileId,
+          topic: summaryTopic.trim() || undefined,
+          targetWords: summaryLength,
+        }),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const data = await safeJson(res);
+        throw new Error(data?.message || "Failed to generate summary");
+      }
+
+      const summary = await res.json();
+      setGeneratedSummary(summary);
+      setShowSummaryDialog(true);
+      setSummaryTarget(null);
+      setSummaryTopic("");
+    } catch (error) {
+      console.error("Summary generation error:", error);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  }
+
+  function openSummaryDialog(file: ManagedFile) {
+    setSummaryTarget(file);
+    setSummaryTopic("");
+    setSummaryLength(200);
   }
 
   async function handleConfirmDelete() {
@@ -191,6 +246,21 @@ export default function Client({
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openSummaryDialog(f)}
+                      disabled={generatingSummary}
+                    >
+                      {generatingSummary && summaryTarget?.id === f.id ? (
+                        <>
+                          Generating
+                          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        </>
+                      ) : (
+                        "Generate Summary"
+                      )}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -246,6 +316,92 @@ export default function Client({
                 "Delete"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Generation Dialog */}
+      <Dialog
+        open={!!summaryTarget}
+        onOpenChange={(open) => !open && setSummaryTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Summary</DialogTitle>
+            <DialogDescription>
+              Generate an AI summary for &quot;{summaryTarget?.filename}&quot;
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Topic (optional)</label>
+              <Input
+                placeholder="e.g., main conclusions, methodology..."
+                value={summaryTopic}
+                onChange={(e) => setSummaryTopic(e.target.value)}
+                maxLength={100}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty for a general summary
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Target Length</label>
+              <select
+                value={summaryLength}
+                onChange={(e) => setSummaryLength(Number(e.target.value))}
+                className="w-full p-2 border border-input rounded-md"
+              >
+                <option value={100}>Short (100 words)</option>
+                <option value={200}>Medium (200 words)</option>
+                <option value={400}>Long (400 words)</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={generatingSummary}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={handleGenerateSummary}
+              disabled={generatingSummary}
+            >
+              {generatingSummary ? (
+                <>
+                  Generating
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Generate Summary"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Result Dialog */}
+      <Dialog
+        open={showSummaryDialog}
+        onOpenChange={setShowSummaryDialog}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{generatedSummary?.title}</DialogTitle>
+            <DialogDescription>
+              Generated by {generatedSummary?.model}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto">
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap">{generatedSummary?.content}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>Close</Button>
+            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
