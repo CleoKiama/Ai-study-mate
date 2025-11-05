@@ -3,6 +3,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { Sidebar, type SidebarItem } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useState, useEffect } from "react";
 
 const sidebarItems: SidebarItem[] = [
@@ -45,6 +46,12 @@ export default function DashboardLayout({
           items={sidebarItems}
           open={sidebarOpen}
           onOpenChange={setSidebarOpen}
+        />
+      }
+      header={
+        <Header
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          actions={<ThemeToggle />}
         />
       }
     >
