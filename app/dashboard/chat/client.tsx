@@ -32,6 +32,7 @@ export default function ChatClient({ initialFiles }: ChatClientProps) {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -42,10 +43,27 @@ export default function ChatClient({ initialFiles }: ChatClientProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
+
   const selectedFile = files.find(f => f.externalFileId === selectedFileId);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !selectedFileId || isLoading) return;
+
+    // Abort any existing request
+    if (abortController) {
+      abortController.abort();
+    }
+
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -60,6 +78,16 @@ export default function ChatClient({ initialFiles }: ChatClientProps) {
     setIsLoading(true);
     setError(null);
 
+    // Add placeholder assistant message for streaming
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
     try {
       // Prepare conversation history for context
       const history = messages.slice(-4).map(msg => ({
@@ -67,32 +95,99 @@ export default function ChatClient({ initialFiles }: ChatClientProps) {
         content: msg.content,
       }));
 
-      const result = await askDocQuestionAction({
-        externalFileId: selectedFileId,
-        message: userMessage.content,
-        history,
+      // Try streaming first
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          externalFileId: selectedFileId,
+          message: userMessage.content,
+          history,
+        }),
+        signal: newAbortController.signal,
       });
 
-      if (result.success && result.answer) {
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: result.answer,
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      } else {
-        setError(result.error || "Failed to get response");
-        // Remove the optimistic user message on error
-        setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+      if (!response.ok) {
+        throw new Error(`Stream failed: ${response.status} ${response.statusText}`);
       }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      // Remove the optimistic user message on error
-      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
-      console.error("Chat error:", err);
+
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+
+      // Read the stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedContent = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          streamedContent += chunk;
+
+          // Update the assistant message incrementally
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: streamedContent }
+              : msg
+          ));
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+    } catch (err: unknown) {
+      // Handle abort gracefully
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("Request aborted");
+        return;
+      }
+
+      console.error("Streaming failed, trying fallback:", err);
+      
+      // Fallback to server action
+      try {
+        const history = messages.slice(-4).map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+        const result = await askDocQuestionAction({
+          externalFileId: selectedFileId,
+          message: userMessage.content,
+          history,
+        });
+
+        if (result.success && result.answer) {
+          // Update the assistant message with the fallback response
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: result.answer || "No response received" }
+              : msg
+          ));
+        } else {
+          setError(result.error || "Failed to get response");
+          // Remove both messages on error
+          setMessages(prev => prev.filter(msg => 
+            msg.id !== userMessage.id && msg.id !== assistantMessageId
+          ));
+        }
+      } catch (fallbackErr) {
+        setError("An unexpected error occurred");
+        // Remove both messages on error
+        setMessages(prev => prev.filter(msg => 
+          msg.id !== userMessage.id && msg.id !== assistantMessageId
+        ));
+        console.error("Fallback error:", fallbackErr);
+      }
     } finally {
       setIsLoading(false);
+      setAbortController(null);
     }
   };
 
@@ -153,9 +248,15 @@ export default function ChatClient({ initialFiles }: ChatClientProps) {
             <Select
               value={selectedFileId}
               onValueChange={(value) => {
+                // Abort any ongoing request when switching files
+                if (abortController) {
+                  abortController.abort();
+                  setAbortController(null);
+                }
                 setSelectedFileId(value);
                 setMessages([]);
                 setError(null);
+                setIsLoading(false);
               }}
             >
               <SelectTrigger className="w-full">
