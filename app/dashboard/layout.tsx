@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 const sidebarItems: SidebarItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
   { href: "/dashboard/upload", label: "Upload", icon: "📁" },
+  { href: "/dashboard/chat", label: "Chat", icon: "💬" },
   { href: "/dashboard/summaries", label: "Summaries", icon: "📝" },
   { href: "/dashboard/quizzes", label: "Quizzes", icon: "🧠" },
   { href: "/dashboard/progress", label: "Progress", icon: "📊" },

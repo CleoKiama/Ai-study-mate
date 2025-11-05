@@ -147,6 +147,9 @@ export default function DashboardPage() {
               <Link href="/dashboard/upload">Upload Document</Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard/chat">Chat with Docs</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
               <Link href="/dashboard/summaries">View Summaries</Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
